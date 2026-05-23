@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio Value Update</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #ffffff;
+      --panel-head: #f4f4f5;
+      --border: #d4d4d8;
+      --text: #18181b;
+      --muted: #71717a;
+      --accent: #2563eb;
+      --accent-h: #1d4ed8;
+      --green: #15803d;
+      --blue: #1d4ed8;
+      --row-h: 21px;
+      --font: 11px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: var(--font);
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      display: grid;
+      grid-template-columns: 148px 1fr 1fr 1fr 1fr minmax(175px, 0.85fr);
+      grid-template-rows: 1fr 1fr 1fr;
+      width: 100vw;
+      height: 100vh;
+      gap: 4px;
+      padding: 4px;
+      background: #fafafa;
+    }
+
+    .sidebar {
+      grid-column: 1;
+      grid-row: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 6px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .sidebar .btn {
+      width: 100%;
+      text-align: center;
+    }
+
+    .sidebar-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .sidebar-stat label {
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .sidebar-stat .val {
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sidebar-stat.cash .val { color: var(--blue); }
+    .sidebar-stat.invested .val { color: var(--green); }
+    .sidebar-stat.pct .val { color: var(--muted); }
+
+    .sidebar-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2px 0;
+    }
+
+    .saved-badge {
+      font-size: 8px;
+      color: var(--muted);
+      opacity: 0;
+      transition: opacity 0.2s;
+      text-align: center;
+    }
+
+    .saved-badge.show { opacity: 1; color: var(--green); }
+
+    .price-note {
+      font-size: 8px;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+
+    .btn {
+      font-size: 10px;
+      padding: 5px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-h);
+      border-color: var(--accent-h);
+      color: #fff;
+    }
+
+    .btn-primary:disabled { opacity: 0.55; cursor: wait; }
+
+    .portfolio-summary {
+      grid-column: 6;
+      grid-row: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .sum-head {
+      flex: 0 0 auto;
+      padding: 4px 6px;
+      background: var(--panel-head);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .sum-body {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      padding: 4px;
+      gap: 6px;
+    }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+    }
+
+    .summary-table th {
+      text-align: left;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 3px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .summary-table th.r { text-align: right; }
+
+    .summary-table td {
+      padding: 2px 3px;
+      border-bottom: 1px solid #eee;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-table td.r { text-align: right; }
+    .summary-table td.sym { font-weight: 600; }
+    .summary-table tr.total-row td {
+      border-top: 1px solid var(--border);
+      font-weight: 600;
+      background: var(--panel-head);
+    }
+
+    .summary-table tr.total-row td.val { color: var(--green); }
+
+    .summary-empty {
+      font-size: 10px;
+      color: var(--muted);
+      padding: 2px;
+    }
+
+    .pie-section {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding-top: 4px;
+      border-top: 1px solid var(--border);
+    }
+
+    .pie-title {
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      align-self: flex-start;
+    }
+
+    .pie-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 160px;
+      aspect-ratio: 1;
+    }
+
+    #pieChart { width: 100%; height: 100%; display: block; }
+
+    .pie-legend {
+      width: 100%;
+      font-size: 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .pie-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .pie-swatch {
+      flex: 0 0 8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 1px;
+    }
+
+    .pie-legend-label {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pie-legend-pct { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+    .account {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .slot-half {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 0;
+      min-width: 0;
+    }
+
+    .account.half { flex: 1 1 0; min-height: 0; }
+
+    .acc-head {
+      flex: 0 0 auto;
+      padding: 2px 5px;
+      background: var(--panel-head);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .acc-name {
+      font-size: 10px;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      width: 100%;
+      padding: 1px 2px;
+      font-family: inherit;
+    }
+
+    .acc-name:focus { outline: 1px solid var(--accent); border-radius: 2px; }
+
+    .acc-body {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    col.c-sym { width: 28%; }
+    col.c-qty { width: 22%; }
+    col.c-mkt { width: 25%; }
+    col.c-tot { width: 25%; }
+
+    table.data thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #fafafa;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 9px;
+      text-align: left;
+      padding: 2px 3px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    table.data thead th.r { text-align: right; }
+
+    table.data tbody td {
+      padding: 1px 2px;
+      border-bottom: 1px solid #eee;
+      height: var(--row-h);
+      vertical-align: middle;
+    }
+
+    table.data tbody input,
+    table.data tfoot input {
+      width: 100%;
+      height: 17px;
+      padding: 0 3px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: #fff;
+      color: var(--text);
+      font-size: 10px;
+      font-family: inherit;
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    table.data tbody input:focus,
+    table.data tfoot input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    table.data tbody input.sym { text-transform: uppercase; }
+    table.data tbody input.r,
+    table.data tfoot input.r { text-align: right; }
+
+    .cell-r {
+      text-align: right;
+      padding-right: 4px;
+      font-variant-numeric: tabular-nums;
+      font-size: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cell-r.muted { color: var(--muted); }
+    .cell-r.val { color: var(--green); font-weight: 500; }
+
+    .add-row td { border-bottom: none; padding: 2px 3px; height: auto; }
+
+    .btn-add {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 16px;
+      border: 1px dashed var(--border);
+      border-radius: 3px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .btn-add:hover { border-color: var(--accent); color: var(--accent); }
+
+    table.data tfoot td {
+      padding: 2px 3px;
+      border-top: 1px solid var(--border);
+      background: var(--panel-head);
+      font-size: 10px;
+    }
+
+    table.data tfoot .lbl {
+      text-align: right;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 600;
+      padding-right: 4px;
+    }
+
+    table.data tfoot input.cash-in { color: var(--blue); font-weight: 500; }
+
+    table.data tfoot .foot-val {
+      text-align: right;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--green);
+      padding-right: 4px;
+    }
+
+    @media print {
+      @page { size: landscape; margin: 6mm; }
+
+      html, body { overflow: visible; height: auto; background: #fff; }
+
+      .page {
+        display: block;
+        height: auto;
+        width: 100%;
+        padding: 0;
+      }
+
+      .sidebar {
+        display: block;
+        width: 100%;
+        margin-bottom: 8px;
+        border: 1px solid #000;
+        page-break-after: avoid;
+      }
+
+      .sidebar .btn,
+      .saved-badge,
+      .price-note,
+      .btn-add,
+      .add-row { display: none !important; }
+
+      .portfolio-summary {
+        display: block;
+        width: 100%;
+        margin-top: 8px;
+        border: 1px solid #000;
+        page-break-inside: avoid;
+      }
+
+      .accounts-grid {
+        display: block !important;
+      }
+
+      .account,
+      .slot-half {
+        display: inline-block;
+        vertical-align: top;
+        width: 24%;
+        margin: 0 0.5% 6px;
+        break-inside: avoid;
+        border: 1px solid #000;
+      }
+
+      .slot-half { width: 24%; }
+      .slot-half .account { width: 100%; margin: 0 0 4px; display: block; }
+
+      .acc-body { overflow: visible; }
+
+      table.data tbody input,
+      table.data tfoot input,
+      .acc-name {
+        border: none;
+        background: transparent;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="sidebar">
+      <button type="button" class="btn" id="btnPrint">Print / PDF</button>
+      <button type="button" class="btn btn-primary" id="btnUpdate">Update prices</button>
+      <span class="saved-badge" id="savedBadge">Saved</span>
+      <hr class="sidebar-divider">
+      <div class="sidebar-stat">
+        <label>Date</label>
+        <span class="val" id="todayDate"></span>
+      </div>
+      <div class="sidebar-stat cash">
+        <label>Total cash</label>
+        <span class="val" id="grandCash">$0.00</span>
+      </div>
+      <div class="sidebar-stat invested">
+        <label>Total invested</label>
+        <span class="val" id="grandInvested">$0.00</span>
+      </div>
+      <div class="sidebar-stat pct">
+        <label>Cash % of total</label>
+        <span class="val" id="cashPct">—</span>
+      </div>
+      <hr class="sidebar-divider">
+      <span class="price-note" id="priceNote"></span>
+    </aside>
+
+    <div class="accounts-grid" id="accountsGrid"></div>
+    <aside class="portfolio-summary" id="summaryPanel"></aside>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "portfolio_v3";
+    const PRICES_KEY = "portfolio_prices_v2";
+
+    const ACCOUNT_DEFS = [
+      { id: "r1f1", row: 1, col: 2, type: "full", maxRows: 15, defaultName: "Account 1" },
+      { id: "r1f2", row: 1, col: 3, type: "full", maxRows: 15, defaultName: "Account 2" },
+      { id: "r1f3", row: 1, col: 4, type: "full", maxRows: 15, defaultName: "Account 3" },
+      { id: "r1h1", row: 1, col: 5, slot: "half", type: "half", maxRows: 5, defaultName: "Account 4" },
+      { id: "r1h2", row: 1, col: 5, slot: "half", type: "half", maxRows: 5, defaultName: "Account 5" },
+      { id: "r2f1", row: 2, col: 2, type: "full", maxRows: 15, defaultName: "Account 6" },
+      { id: "r2f2", row: 2, col: 3, type: "full", maxRows: 15, defaultName: "Account 7" },
+      { id: "r2f3", row: 2, col: 4, type: "full", maxRows: 15, defaultName: "Account 8" },
+      { id: "r3f1", row: 3, col: 2, type: "full", maxRows: 15, defaultName: "Account 9" },
+      { id: "r3f2", row: 3, col: 3, type: "full", maxRows: 15, defaultName: "Account 10" },
+    ];
+
+    const PIE_COLORS = [
+      "#2563eb", "#16a34a", "#dc2626", "#ca8a04", "#9333ea",
+      "#0891b2", "#ea580c", "#4f46e5", "#be185d", "#65a30d",
+      "#0d9488", "#7c3aed", "#c2410c", "#1d4ed8", "#15803d",
+    ];
+
+    let marketPrices = {};
+    let appData = loadData();
+    let savedTimer = null;
+
+    function todayKey() {
+      return new Date().toLocaleDateString("en-CA");
+    }
+
+    function formatMoney(n) {
+      if (n == null || Number.isNaN(n)) return "—";
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(n);
+    }
+
+    function parseNum(v) {
+      const n = parseFloat(String(v).replace(/,/g, "").trim());
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function formatQty(n) {
+      if (n == null || Number.isNaN(n)) return "—";
+      return Number.isInteger(n) ? String(n) : n.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+    }
+
+    function rowUsed(row) {
+      return !!(
+        (row.symbol || "").trim() ||
+        String(row.quantity ?? "").trim() !== ""
+      );
+    }
+
+    function defaultAccount(def) {
+      return {
+        name: def.defaultName,
+        cash: "",
+        visibleRows: 0,
+        rows: Array.from({ length: def.maxRows }, () => ({
+          symbol: "",
+          quantity: "",
+        })),
+      };
+    }
+
+    function migrateFromV2(parsed) {
+      const oldIds = ["full1", "full2", "full3", "half1", "half2"];
+      const newIds = ["r1f1", "r1f2", "r1f3", "r1h1", "r1h2"];
+      const accounts = {};
+      ACCOUNT_DEFS.forEach((def) => {
+        accounts[def.id] = defaultAccount(def);
+      });
+      if (parsed?.accounts) {
+        oldIds.forEach((oldId, i) => {
+          const src = parsed.accounts[oldId];
+          if (!src) return;
+          const def = ACCOUNT_DEFS.find((d) => d.id === newIds[i]);
+          if (!def) return;
+          accounts[newIds[i]] = {
+            name: src.name || def.defaultName,
+            cash: src.cash || "",
+            visibleRows: src.visibleRows ?? 0,
+            rows: src.rows.slice(0, def.maxRows).map((r) => ({
+              symbol: r.symbol || "",
+              quantity: r.quantity || "",
+            })),
+          };
+          while (accounts[newIds[i]].rows.length < def.maxRows) {
+            accounts[newIds[i]].rows.push({ symbol: "", quantity: "" });
+          }
+        });
+      }
+      return { accounts };
+    }
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          ACCOUNT_DEFS.forEach((def) => {
+            if (!parsed.accounts[def.id]) parsed.accounts[def.id] = defaultAccount(def);
+            else {
+              const acc = parsed.accounts[def.id];
+              while (acc.rows.length < def.maxRows) acc.rows.push({ symbol: "", quantity: "" });
+              acc.rows = acc.rows.slice(0, def.maxRows);
+              if (acc.visibleRows == null) acc.visibleRows = countUsedRows(acc);
+            }
+          });
+          return parsed;
+        }
+      } catch (_) {}
+
+      try {
+        const v2 = localStorage.getItem("portfolio_v2");
+        if (v2) return migrateFromV2(JSON.parse(v2));
+      } catch (_) {}
+
+      const accounts = {};
+      ACCOUNT_DEFS.forEach((d) => { accounts[d.id] = defaultAccount(d); });
+      return { accounts };
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+      flashSaved();
+    }
+
+    function flashSaved() {
+      const el = document.getElementById("savedBadge");
+      el.classList.add("show");
+      clearTimeout(savedTimer);
+      savedTimer = setTimeout(() => el.classList.remove("show"), 1500);
+    }
+
+    function countUsedRows(acc) {
+      let n = 0;
+      for (let i = 0; i < acc.rows.length; i++) {
+        if (rowUsed(acc.rows[i])) n = i + 1;
+      }
+      return n;
+    }
+
+    function getDisplayCount(acc, def) {
+      return Math.min(Math.max(acc.visibleRows || 0, countUsedRows(acc)), def.maxRows);
+    }
+
+    function syncVisibleRows(acc) {
+      const used = countUsedRows(acc);
+      let vis = Math.max(acc.visibleRows || 0, used);
+      while (vis > used && vis > 0 && !rowUsed(acc.rows[vis - 1])) vis--;
+      acc.visibleRows = vis;
+    }
+
+    function loadPriceCache() {
+      try {
+        const raw = localStorage.getItem(PRICES_KEY);
+        if (!raw) return null;
+        const c = JSON.parse(raw);
+        if (c.date === todayKey()) return c.prices;
+      } catch (_) {}
+      return null;
+    }
+
+    function savePriceCache(prices) {
+      localStorage.setItem(PRICES_KEY, JSON.stringify({ date: todayKey(), prices }));
+    }
+
+    function getPrice(sym) {
+      const s = (sym || "").trim().toUpperCase();
+      if (!s) return null;
+      const p = marketPrices[s];
+      return p != null ? p : null;
+    }
+
+    function rowTotal(row) {
+      const qty = parseNum(row.quantity);
+      const price = getPrice(row.symbol);
+      if (qty == null || qty <= 0 || price == null) return null;
+      return qty * price;
+    }
+
+    function accountInvested(acc) {
+      let sum = 0;
+      for (const row of acc.rows) {
+        const t = rowTotal(row);
+        if (t != null) sum += t;
+      }
+      return sum;
+    }
+
+    function getTotalCash() {
+      let cash = 0;
+      for (const def of ACCOUNT_DEFS) {
+        const c = parseNum(appData.accounts[def.id].cash);
+        if (c != null) cash += c;
+      }
+      return cash;
+    }
+
+    function getUniqueSymbols() {
+      const set = new Set();
+      for (const def of ACCOUNT_DEFS) {
+        for (const row of appData.accounts[def.id].rows) {
+          const s = (row.symbol || "").trim().toUpperCase();
+          if (s) set.add(s);
+        }
+      }
+      return [...set];
+    }
+
+    function getPortfolioBySymbol() {
+      const map = new Map();
+      for (const def of ACCOUNT_DEFS) {
+        for (const row of appData.accounts[def.id].rows) {
+          const sym = (row.symbol || "").trim().toUpperCase();
+          const qty = parseNum(row.quantity);
+          if (!sym || qty == null || qty <= 0) continue;
+          if (!map.has(sym)) map.set(sym, { qty: 0, value: 0 });
+          const e = map.get(sym);
+          e.qty += qty;
+          const price = getPrice(sym);
+          if (price != null) e.value += qty * price;
+        }
+      }
+      return [...map.entries()]
+        .map(([symbol, d]) => ({ symbol, qty: d.qty, value: d.value }))
+        .filter((d) => d.qty > 0)
+        .sort((a, b) => b.value - a.value || a.symbol.localeCompare(b.symbol));
+    }
+
+    function getPieSlices() {
+      const stocks = getPortfolioBySymbol().filter((s) => s.value > 0);
+      const cash = getTotalCash();
+      const slices = stocks.map((s) => ({ label: s.symbol, value: s.value }));
+      if (cash > 0) slices.push({ label: "Cash", value: cash });
+      return slices;
+    }
+
+    async function fetchYahooPrice(symbol) {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+      const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxy);
+      if (!res.ok) throw new Error("fetch failed");
+      const data = await res.json();
+      const r = data?.chart?.result?.[0];
+      const p = r?.meta?.regularMarketPrice ?? r?.indicators?.quote?.[0]?.close?.slice(-1)?.[0];
+      if (p == null) throw new Error("no price");
+      return Number(p);
+    }
+
+    async function updatePrices(force) {
+      const cached = loadPriceCache();
+      if (!force && cached) {
+        marketPrices = cached;
+        renderAll();
+        setPriceNote();
+        return;
+      }
+      const syms = getUniqueSymbols();
+      if (!syms.length) { setPriceNote("Enter symbols first."); return; }
+      const btn = document.getElementById("btnUpdate");
+      btn.disabled = true;
+      setPriceNote("Updating…");
+      const next = { ...marketPrices };
+      for (const sym of syms) {
+        try {
+          next[sym] = await fetchYahooPrice(sym);
+          await new Promise((r) => setTimeout(r, 300));
+        } catch (e) { console.warn(sym, e); }
+      }
+      marketPrices = next;
+      savePriceCache(next);
+      btn.disabled = false;
+      renderAll();
+      setPriceNote();
+    }
+
+    function setPriceNote(msg) {
+      const el = document.getElementById("priceNote");
+      if (msg) { el.textContent = msg; return; }
+      const raw = localStorage.getItem(PRICES_KEY);
+      if (!raw) { el.textContent = "Prices not updated today."; return; }
+      try {
+        const c = JSON.parse(raw);
+        el.textContent = c.date === todayKey() ? `Prices: ${c.date} ✓` : `Last: ${c.date}`;
+      } catch (_) { el.textContent = ""; }
+    }
+
+    function updateGrandTotals() {
+      const cash = getTotalCash();
+      let invested = 0;
+      for (const def of ACCOUNT_DEFS) invested += accountInvested(appData.accounts[def.id]);
+      const total = cash + invested;
+      const pct = total > 0 ? (cash / total) * 100 : null;
+      document.getElementById("grandCash").textContent = formatMoney(cash);
+      document.getElementById("grandInvested").textContent = formatMoney(invested);
+      document.getElementById("cashPct").textContent = pct == null ? "—" : pct.toFixed(1) + "%";
+      updateSummary();
+    }
+
+    function drawPieChart(slices) {
+      const canvas = document.getElementById("pieChart");
+      const legend = document.getElementById("pieLegend");
+      if (!canvas || !legend) return;
+      legend.innerHTML = "";
+      const total = slices.reduce((s, x) => s + x.value, 0);
+      const dpr = window.devicePixelRatio || 1;
+      const size = Math.min(canvas.parentElement?.clientWidth || 150, 160);
+      canvas.width = size * dpr;
+      canvas.height = size * dpr;
+      canvas.style.width = size + "px";
+      canvas.style.height = size + "px";
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const cx = size / 2, cy = size / 2, radius = size / 2 - 4;
+
+      if (total <= 0) {
+        ctx.fillStyle = "#f4f4f5";
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fill();
+        legend.innerHTML = '<span class="summary-empty">No data yet</span>';
+        return;
+      }
+
+      let start = -Math.PI / 2;
+      slices.forEach((slice, i) => {
+        const angle = (slice.value / total) * Math.PI * 2;
+        const color = PIE_COLORS[i % PIE_COLORS.length];
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, start, start + angle);
+        ctx.closePath();
+        ctx.fill();
+        start += angle;
+        const item = document.createElement("div");
+        item.className = "pie-legend-item";
+        item.innerHTML = `<span class="pie-swatch" style="background:${color}"></span>
+          <span class="pie-legend-label">${esc(slice.label)}</span>
+          <span class="pie-legend-pct">${((slice.value / total) * 100).toFixed(1)}%</span>`;
+        legend.appendChild(item);
+      });
+
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#18181b";
+      ctx.font = "600 9px Segoe UI, system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(formatMoney(total), cx, cy);
+    }
+
+    function updateSummary() {
+      const tbody = document.getElementById("summaryTbody");
+      const empty = document.getElementById("summaryEmpty");
+      const totalQtyEl = document.getElementById("summaryTotalQty");
+      const totalValEl = document.getElementById("summaryTotalVal");
+      if (!tbody) return;
+      const rows = getPortfolioBySymbol();
+      tbody.innerHTML = "";
+      if (!rows.length) {
+        empty.style.display = "block";
+        totalQtyEl.textContent = "—";
+        totalValEl.textContent = "—";
+        drawPieChart([]);
+        return;
+      }
+      empty.style.display = "none";
+      let sumQty = 0, sumVal = 0;
+      for (const r of rows) {
+        sumQty += r.qty;
+        sumVal += r.value;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td class="sym">${esc(r.symbol)}</td>
+          <td class="r">${formatQty(r.qty)}</td>
+          <td class="r val">${r.value > 0 ? formatMoney(r.value) : "—"}</td>`;
+        tbody.appendChild(tr);
+      }
+      totalQtyEl.textContent = formatQty(sumQty);
+      totalValEl.textContent = formatMoney(sumVal);
+      drawPieChart(getPieSlices());
+    }
+
+    function updateRowCells(panel, def, rowIdx) {
+      const acc = appData.accounts[def.id];
+      const row = acc.rows[rowIdx];
+      const tr = panel.querySelector(`tbody tr[data-row="${rowIdx}"]`);
+      if (!tr) return;
+      const mp = getPrice(row.symbol);
+      const tot = rowTotal(row);
+      const mktCell = tr.querySelector(".cell-mkt");
+      const valCell = tr.querySelector(".cell-val");
+      mktCell.textContent = mp == null ? "—" : formatMoney(mp);
+      mktCell.className = "cell-r cell-mkt" + (mp == null ? " muted" : "");
+      valCell.textContent = tot == null ? "—" : formatMoney(tot);
+      valCell.className = "cell-r cell-val val";
+      const footVal = panel.querySelector(".foot-invested");
+      if (footVal) footVal.textContent = formatMoney(accountInvested(acc));
+    }
+
+    function onRowChange(def, rowIdx, field, value) {
+      const acc = appData.accounts[def.id];
+      const panel = document.querySelector(`[data-panel="${def.id}"]`);
+      const prevCount = getDisplayCount(acc, def);
+      acc.rows[rowIdx][field] = value;
+      syncVisibleRows(acc);
+      saveData();
+      if (getDisplayCount(acc, def) !== prevCount) renderAccount(def);
+      else updateRowCells(panel, def, rowIdx);
+      updateGrandTotals();
+    }
+
+    function addRow(def) {
+      const acc = appData.accounts[def.id];
+      const disp = getDisplayCount(acc, def);
+      if (disp >= def.maxRows) return;
+      acc.visibleRows = disp + 1;
+      saveData();
+      renderAccount(def);
+    }
+
+    function buildTable(def) {
+      const acc = appData.accounts[def.id];
+      const displayCount = getDisplayCount(acc, def);
+      const canAdd = displayCount < def.maxRows;
+      const wrap = document.createElement("div");
+      wrap.className = "acc-body";
+      const table = document.createElement("table");
+      table.className = "data";
+      table.innerHTML = `
+        <colgroup><col class="c-sym"><col class="c-qty"><col class="c-mkt"><col class="c-tot"></colgroup>
+        <thead><tr>
+          <th>Symbol</th><th>Shares</th><th class="r">Mkt</th><th class="r">Value</th>
+        </tr></thead>
+        <tbody></tbody><tfoot></tfoot>`;
+      const tbody = table.querySelector("tbody");
+      for (let i = 0; i < displayCount; i++) {
+        const row = acc.rows[i];
+        const mp = getPrice(row.symbol);
+        const tot = rowTotal(row);
+        const tr = document.createElement("tr");
+        tr.dataset.row = i;
+        tr.innerHTML = `
+          <td><input class="sym" type="text" value="${esc(row.symbol)}" data-i="${i}" data-f="symbol" autocomplete="off"></td>
+          <td><input class="r" type="text" inputmode="decimal" value="${esc(row.quantity)}" data-i="${i}" data-f="quantity" autocomplete="off"></td>
+          <td class="cell-r cell-mkt${mp == null ? " muted" : ""}">${mp == null ? "—" : formatMoney(mp)}</td>
+          <td class="cell-r cell-val val">${tot == null ? "—" : formatMoney(tot)}</td>`;
+        tr.querySelectorAll("input").forEach((inp) => {
+          inp.addEventListener("input", () => onRowChange(def, +inp.dataset.i, inp.dataset.f, inp.value));
+        });
+        tbody.appendChild(tr);
+      }
+      if (canAdd) {
+        const addTr = document.createElement("tr");
+        addTr.className = "add-row";
+        addTr.innerHTML = `<td colspan="4"><button type="button" class="btn-add" title="Add row">+</button></td>`;
+        addTr.querySelector(".btn-add").addEventListener("click", () => addRow(def));
+        tbody.appendChild(addTr);
+      }
+      const inv = accountInvested(acc);
+      table.querySelector("tfoot").innerHTML = `
+        <tr><td colspan="3" class="lbl">Total invested</td>
+          <td class="foot-val foot-invested">${formatMoney(inv)}</td></tr>
+        <tr><td colspan="3" class="lbl">Cash</td>
+          <td><input type="text" inputmode="decimal" class="cash-in r" value="${esc(acc.cash)}" placeholder="0.00" autocomplete="off"></td></tr>`;
+      table.querySelector(".cash-in").addEventListener("input", (e) => {
+        acc.cash = e.target.value;
+        saveData();
+        updateGrandTotals();
+      });
+      wrap.appendChild(table);
+      return wrap;
+    }
+
+    function renderAccount(def) {
+      const panel = document.querySelector(`[data-panel="${def.id}"]`);
+      if (!panel) return;
+      panel.querySelector(".acc-body").replaceWith(buildTable(def));
+      panel.querySelector(".acc-name").value = appData.accounts[def.id].name;
+    }
+
+    function esc(s) {
+      return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    }
+
+    function createAccountPanel(def) {
+      const acc = appData.accounts[def.id];
+      const panel = document.createElement("section");
+      panel.className = `account ${def.type}`;
+      panel.dataset.panel = def.id;
+      if (!def.slot) {
+        panel.style.gridColumn = String(def.col);
+        panel.style.gridRow = String(def.row);
+      }
+      const head = document.createElement("div");
+      head.className = "acc-head";
+      const nameInp = document.createElement("input");
+      nameInp.type = "text";
+      nameInp.className = "acc-name";
+      nameInp.value = acc.name;
+      nameInp.autocomplete = "off";
+      nameInp.addEventListener("input", () => { acc.name = nameInp.value; saveData(); });
+      head.appendChild(nameInp);
+      panel.appendChild(head);
+      panel.appendChild(buildTable(def));
+      return panel;
+    }
+
+    function buildSummaryPanel() {
+      const panel = document.getElementById("summaryPanel");
+      panel.innerHTML = `
+        <div class="sum-head">Ownership by stock</div>
+        <div class="sum-body">
+          <p class="summary-empty" id="summaryEmpty">Enter symbols to see totals.</p>
+          <table class="summary-table">
+            <thead><tr><th>Symbol</th><th class="r">Shares</th><th class="r">Value</th></tr></thead>
+            <tbody id="summaryTbody"></tbody>
+            <tfoot><tr class="total-row">
+              <td>Total</td><td class="r" id="summaryTotalQty">—</td>
+              <td class="r val" id="summaryTotalVal">—</td>
+            </tr></tfoot>
+          </table>
+          <div class="pie-section">
+            <span class="pie-title">Portfolio mix</span>
+            <div class="pie-wrap"><canvas id="pieChart"></canvas></div>
+            <div class="pie-legend" id="pieLegend"></div>
+          </div>
+        </div>`;
+    }
+
+    function buildLayout() {
+      const grid = document.getElementById("accountsGrid");
+      grid.style.display = "contents";
+
+      const halfDefs = ACCOUNT_DEFS.filter((d) => d.slot === "half");
+      const placedHalf = new Set();
+
+      ACCOUNT_DEFS.forEach((def) => {
+        if (def.slot === "half") {
+          if (placedHalf.has(def.col + "-" + def.row)) return;
+          placedHalf.add(def.col + "-" + def.row);
+          const slot = document.createElement("div");
+          slot.className = "slot-half";
+          slot.style.gridColumn = String(def.col);
+          slot.style.gridRow = String(def.row);
+          halfDefs.filter((d) => d.col === def.col && d.row === def.row).forEach((d) => {
+            slot.appendChild(createAccountPanel(d));
+          });
+          grid.appendChild(slot);
+        } else {
+          grid.appendChild(createAccountPanel(def));
+        }
+      });
+
+      buildSummaryPanel();
+    }
+
+    function renderAll() {
+      ACCOUNT_DEFS.forEach(renderAccount);
+      updateGrandTotals();
+    }
+
+    function init() {
+      document.getElementById("todayDate").textContent =
+        new Date().toLocaleDateString(undefined, {
+          weekday: "short", year: "numeric", month: "short", day: "numeric",
+        });
+
+      marketPrices = loadPriceCache() || {};
+      buildLayout();
+      updateGrandTotals();
+      setPriceNote();
+
+      document.getElementById("btnUpdate").addEventListener("click", () => updatePrices(true));
+      document.getElementById("btnPrint").addEventListener("click", () => window.print());
+      window.addEventListener("resize", () => updateSummary());
+
+      if (loadPriceCache()) updatePrices(false);
+    }
+
+    init();
+  </script>
+</body>
+</html>
